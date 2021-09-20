@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Player;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Http\Response;
 
 class PlayerController extends Controller
 {
@@ -76,7 +77,7 @@ class PlayerController extends Controller
             ]);
         } else {
             //no file was uploaded
-            dd('no file uploaded');
+            throw new \Exception('No file was uploaded', Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -88,10 +89,12 @@ class PlayerController extends Controller
         if (in_array(strtolower($extension), $valid_extension)) {
             if ($fileSize <= $maxFileSize) {
             } else {
-                dd('File Size too large');
+                throw new \Exception('No file was uploaded', Response::HTTP_REQUEST_ENTITY_TOO_LARGE); //413 error
+
             }
         } else {
-            dd('Invalid file extension');
+            throw new \Exception('Invalid file extension', Response::HTTP_UNSUPPORTED_MEDIA_TYPE); //415 error
+            
         }
     }
 
