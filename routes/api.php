@@ -20,3 +20,4 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 
 Route::post('/upload-content',[PlayerController::class,'uploadContent'])->name('import.content');
+Route::post('/upload-content-with-package',[PlayerController::class,'uploadContentWithPackage'])->name('upload.content.with.package');

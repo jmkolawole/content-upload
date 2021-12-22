@@ -3,6 +3,9 @@
 /public/storage
 /storage/*.key
 /vendor
+/analytics
+/config/analytics.php
+/stubs
 .env
 .env.backup
 .phpunit.result.cache

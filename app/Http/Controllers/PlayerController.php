@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Imports\PlayersImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Player;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PlayerController extends Controller
 {
@@ -54,22 +56,21 @@ class PlayerController extends Controller
 
                 try {
                     DB::beginTransaction();
-                Player::create([
-                    'name' => $importData[1],
-                    'club' => $importData[2],
-                    'email' => $importData[3],
-                    'position' => $importData[4],
-                    'age' => $importData[5],
-                    'salary' => $importData[6]
-                ]);
-                //Send Email
-                $this->sendEmail($email, $name);
-                DB::commit();
+                    Player::create([
+                        'name' => $importData[1],
+                        'club' => $importData[2],
+                        'email' => $importData[3],
+                        'position' => $importData[4],
+                        'age' => $importData[5],
+                        'salary' => $importData[6]
+                    ]);
+                    //Send Email
+                    $this->sendEmail($email, $name);
+                    DB::commit();
                 } catch (\Exception $e) {
                     //throw $th;
                     DB::rollBack();
                 }
-                
             }
 
             return response()->json([
@@ -81,7 +82,49 @@ class PlayerController extends Controller
         }
     }
 
-    public function checkUploadedFileProperties($extension, $fileSize)
+
+    /**
+     * Uploads the records in a csv file or excel using maatwebsite package 
+     *
+     * @param Request $request
+     * @return mixed
+     */
+    public function uploadContentWithPackage(Request $request)
+    {
+        if ($request->file) {
+            $file = $request->file;
+            $extension = $file->getClientOriginalExtension(); //Get extension of uploaded file
+            $fileSize = $file->getSize(); //Get size of uploaded file in bytes
+
+            //Checks to see that the valid file types and sizes were uploaded
+            $this->checkUploadedFileProperties($extension, $fileSize);
+
+            $import = new PlayersImport();
+            Excel::import($import, $request->file);
+            foreach ($import->data as $user) {
+                //sends email to all users
+                $this->sendEmail($user->email, $user->name);
+            }
+            
+            //Return a success response with the number if records uploaded
+            return response()->json([
+                'message' => $import->data->count() ." records successfully uploaded"
+            ]);
+
+        } else {
+            throw new \Exception('No file was uploaded', Response::HTTP_BAD_REQUEST);
+        }
+        
+    }
+
+    /**
+     * Checks to see that the uploaded file valid and within acceptable size limits
+     *
+     * @param string $extension
+     * @param integer $fileSize
+     * @return void
+     */
+    public function checkUploadedFileProperties($extension, $fileSize) : void
     {
         $valid_extension = array("csv", "xlsx"); //Only want csv and excel files
         $maxFileSize = 2097152; // Uploaded file size limit is 2mb
@@ -94,11 +137,18 @@ class PlayerController extends Controller
             }
         } else {
             throw new \Exception('Invalid file extension', Response::HTTP_UNSUPPORTED_MEDIA_TYPE); //415 error
-            
+
         }
     }
 
-    public function sendEmail($email, $name)
+    /**
+     * Sends email to the uploaded players
+     *
+     * @param string $email
+     * @param string $name
+     * @return void
+     */
+    public function sendEmail($email, $name) :void
     {
         $data = array(
             'email' => $email,
